@@ -1,5 +1,7 @@
 # Mapping Global Research on Microplastic Sources, Environmental Pathways, and Health Implications: A Bibliometric Analysis (2000–2025)
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19492298.svg)](https://doi.org/10.5281/zenodo.19492298)
+
 Reproducible Web of Science–based bibliometrics for this study, implemented in R with [bibliometrix](https://www.bibliometrix.org/).
 
 The full narrative, methods, code, and figures live in [`microplastics_bibliometric_analysis.Rmd`](microplastics_bibliometric_analysis.Rmd).
