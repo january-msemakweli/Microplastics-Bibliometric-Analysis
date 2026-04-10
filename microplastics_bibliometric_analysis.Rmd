@@ -1,0 +1,607 @@
+---
+title: "Mapping Global Research on Microplastic Sources, Environmental Pathways, and Health Implications: A Bibliometric Analysis (2000–2025)"
+author: "Amelia Chebyala^1^, January G. Msemakweli^2*^, Oscar Punguti^3^, Edson Protas^1^, Iddi Mapande^1^, Nelson Joseph Msacky^4^, and Novatus Tesha^5^"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+    theme: cosmo
+    highlight: tango
+    code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 7,
+  fig.align = "center",
+  dpi = 300,
+  cache = TRUE,
+  cache.lazy = FALSE
+)
+```
+
+#### Affiliations
+
+^1^ Muhimbili University of Health and Allied Sciences, Dar es Salaam, Tanzania, United Republic of, Department of Environmental and Occupational Health  
+
+^2^ Johns Hopkins Bloomberg School of Public Health, Baltimore, United States, Department of Epidemiology  
+
+^3^ Mbeya University of Science and Technology, Mbeya, Tanzania, United Republic of, Department of Medical Sciences and Technology  
+
+^4^ Institute of Rural Development Planning, Dodoma, Tanzania, United Republic of, Department of Environmental Planning  
+
+^5^ Muhimbili University of Health and Allied Sciences, Dar es Salaam, Tanzania, United Republic of, Department of Development Studies  
+
+**Corresponding author.** E-mail: [ameliaalfred500@gmail.com](mailto:ameliaalfred500@gmail.com)
+
+# Introduction
+
+Microplastics and nanoplastics have emerged as pervasive environmental contaminants, detected across virtually all environmental compartments --- from marine and freshwater systems to soils, the atmosphere, and the human food chain. These synthetic particles, generally defined as plastic fragments smaller than 5 mm in diameter, originate from diverse sources including the degradation of larger plastic debris, industrial microbeads, synthetic textile fibres, and wastewater effluents. Their persistence, ubiquity, and capacity to sorb and transport chemical pollutants have raised substantial concerns regarding ecological integrity and, increasingly, human health.
+
+Over the past two decades, the scientific literature on microplastics has expanded rapidly. Early research focused primarily on the occurrence and distribution of microplastics in marine environments. However, subsequent investigations have broadened the scope to encompass freshwater systems, terrestrial soils, atmospheric deposition, and the potential for human exposure through ingestion and inhalation. More recently, a growing body of evidence has begun to address the toxicological implications of microplastic exposure, including oxidative stress, inflammatory responses, genotoxicity, endocrine disruption, and possible carcinogenic outcomes.
+
+Despite this rapid growth, there remains a need for systematic, quantitative assessments of the research landscape to identify trends, thematic clusters, knowledge gaps, and emerging frontiers. Bibliometric analysis provides a rigorous, reproducible methodology for mapping the intellectual structure of a research field, identifying influential publications and collaboration networks, and tracking the evolution of research themes over time.
+
+The present study employs bibliometric techniques to analyse the global body of literature linking microplastic sources, environmental pathways, and health implications published between 2000 and 2025. The specific objectives are to:
+
+1. Map global publication trends from 2000 to 2025.
+2. Identify leading countries, institutions, authors, and journals.
+3. Examine collaboration networks among countries and institutions.
+4. Map keyword co-occurrence with a focus on microplastic sources, environmental pathways, and health endpoints.
+5. Perform thematic evolution analysis across three defined time periods (2000--2010, 2011--2017, 2018--2025).
+6. Conduct co-citation analysis to identify conceptual clusters within the literature.
+7. Identify emerging topics and trend evolution.
+8. Assess whether literature linking microplastics to chronic or carcinogenic outcomes is increasing over time.
+
+# Methods
+
+## Data Source
+
+Bibliographic data were retrieved from the **Web of Science Core Collection** (Clarivate Analytics), which provides comprehensive coverage of high-impact, peer-reviewed journals across the natural sciences, social sciences, and humanities. The Web of Science was selected for its standardised metadata structure, broad disciplinary coverage, and compatibility with established bibliometric software tools.
+
+## Search Strategy
+
+The following Boolean search query was applied to the Topic field (TS), which encompasses titles, abstracts, author keywords, and Keywords Plus:
+
+```
+TS=((microplastic* OR nanoplastic* OR "plastic debris" OR microbead*
+OR "synthetic fiber*" OR "synthetic fibres")
+AND (pathway* OR source* OR transport* OR fate OR discharge OR effluent*
+OR "wastewater treatment*" OR river* OR marine OR ocean* OR sediment*
+OR soil* OR atmosphere* OR airborne OR "food chain*" OR ingestion
+OR inhalation OR exposure*)
+AND ("health effect*" OR toxicit* OR "oxidative stress" OR inflammation
+OR genotoxic* OR carcinogen* OR cancer OR "DNA damage"
+OR "endocrine disruption" OR "human health"))
+```
+
+The search was conducted to retrieve records published between **1 January 2000** and **31 December 2025**.
+
+## Inclusion Criteria
+
+Results were refined to include only **Articles** and **Review Articles**, thereby excluding editorial material, meeting abstracts, letters, and other non-substantive document types. This restriction was applied to ensure that only peer-reviewed, substantive contributions were included in the analysis.
+
+## Data Cleaning
+
+```{r load-libraries}
+library(bibliometrix)
+library(ggplot2)
+library(dplyr)
+library(stringr)
+```
+
+```{r import-data}
+# Import all Web of Science plain text export files from the data folder
+files <- list.files(path = "data", pattern = "\\.txt$", full.names = TRUE)
+
+# Exclude non-data files (e.g., context.txt)
+files <- files[grepl("savedrecs", files)]
+
+cat("Number of export files detected:", length(files), "\n")
+cat("Files:\n")
+print(basename(files))
+
+# Convert to bibliometrix data frame
+M <- convert2df(files, dbsource = "wos", format = "plaintext")
+cat("\nTotal records imported:", nrow(M), "\n")
+```
+
+```{r duplicate-removal}
+# Remove duplicate records based on bibliometric matching
+M <- duplicatedMatching(M, Field = "TI", tol = 0.95)
+cat("Records after duplicate removal:", nrow(M), "\n")
+```
+
+```{r filter-years}
+# Remove records beyond the study period (some papers are assigned to 2026 issues)
+M <- M %>% filter(PY >= 2000 & PY <= 2025)
+cat("Records after restricting to 2000–2025:", nrow(M), "\n")
+```
+
+```{r meta-tag-extraction}
+# Extract additional metadata fields required for network analyses
+# AU_CO: author countries (needed for country collaboration network)
+# AU_UN: author university affiliations (may already exist, but ensure consistency)
+M <- metaTagExtraction(M, Field = "AU_CO", sep = ";")
+cat("AU_CO field generated. Sample values:\n")
+head(M$AU_CO, 5)
+```
+
+Data cleaning involved the removal of duplicate records using the `duplicatedMatching()` function from the `bibliometrix` package, which identifies and removes records with highly similar titles (tolerance threshold of 0.95). Subsequently, the `metaTagExtraction()` function was applied to derive the author country (`AU_CO`) field from the institutional affiliation data (`C1`), which is required for country-level collaboration network analysis. This step is essential when combining multiple export files that may contain overlapping records.
+
+## Bibliometric Analysis Strategy
+
+All bibliometric analyses were performed using the **bibliometrix** R package (Aria & Cuccurullo, 2017), a comprehensive tool for quantitative research in scientometrics and bibliometrics. The analysis encompassed descriptive performance analysis, network analysis (collaboration, co-occurrence, and co-citation), thematic mapping, and trend identification. Visualisations were produced using `ggplot2` and the built-in plotting functions of `bibliometrix`.
+
+# Results
+
+## Descriptive Performance Analysis
+
+```{r descriptive-analysis}
+# Perform descriptive bibliometric analysis
+results <- biblioAnalysis(M, sep = ";")
+summary(results, k = 20, pause = FALSE)
+```
+
+The descriptive analysis provides an overview of the dataset, including the total number of documents, sources (journals), authors, author appearances, keywords, and the timespan of the collection. Key metrics such as the average number of citations per document, the collaboration index, and the proportion of multi-authored publications are reported.
+
+*(Results will be interpreted after execution.)*
+
+## Annual Publication Trend
+
+```{r annual-trend, fig.cap="Annual scientific production on microplastics, environmental pathways, and health implications (2000–2025)."}
+# Compute annual production
+annual <- M %>%
+  group_by(PY) %>%
+  summarise(Articles = n(), .groups = "drop") %>%
+  filter(!is.na(PY)) %>%
+  arrange(PY)
+
+# Compute cumulative production
+annual <- annual %>%
+  mutate(Cumulative = cumsum(Articles))
+
+# Plot annual production with regression line
+ggplot(annual, aes(x = PY, y = Articles)) +
+  geom_bar(stat = "identity", fill = "#2C7BB6", alpha = 0.85, width = 0.7) +
+  geom_smooth(method = "loess", se = TRUE, colour = "#D7191C", linewidth = 1.2) +
+  geom_text(aes(label = Articles), vjust = -0.5, size = 2.8, colour = "grey30") +
+  scale_x_continuous(breaks = seq(min(annual$PY), max(annual$PY), by = 2)) +
+  labs(
+    x = "Publication Year",
+    y = "Number of Publications",
+    title = "Annual Scientific Production (2000–2025)",
+    subtitle = "Web of Science Core Collection — Articles and Reviews"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5, colour = "grey40"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank()
+  )
+```
+
+```{r cumulative-trend, fig.cap="Cumulative publication growth (2000–2025)."}
+# Plot cumulative production
+ggplot(annual, aes(x = PY, y = Cumulative)) +
+  geom_line(colour = "#2C7BB6", linewidth = 1.2) +
+  geom_point(colour = "#D7191C", size = 2.5) +
+  scale_x_continuous(breaks = seq(min(annual$PY), max(annual$PY), by = 2)) +
+  labs(
+    x = "Publication Year",
+    y = "Cumulative Number of Publications",
+    title = "Cumulative Growth of Scientific Production (2000–2025)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank()
+  )
+```
+
+The annual publication trend reveals the temporal evolution of research interest in the intersection of microplastics, environmental pathways, and health effects. The LOESS regression line highlights the overall growth trajectory, while the cumulative plot illustrates the acceleration of research output over time.
+
+*(Results will be interpreted after execution.)*
+
+## Most Productive Countries
+
+```{r top-countries, fig.cap="Top 20 most productive countries by number of publications."}
+# Extract country production
+country_prod <- results$Countries
+
+country_df <- data.frame(
+  Country = names(country_prod),
+  Articles = as.numeric(country_prod)
+) %>%
+  arrange(desc(Articles))
+
+# Save full country table as CSV
+write.csv(country_df, "country_publication_frequencies.csv", row.names = FALSE)
+
+# Top 20 only for plotting
+country_top20 <- country_df %>%
+  head(20)
+
+ggplot(country_top20, aes(x = reorder(Country, Articles), y = Articles)) +
+  geom_bar(stat = "identity", fill = "#2C7BB6", alpha = 0.85) +
+  geom_text(aes(label = Articles), hjust = -0.2, size = 3.2) +
+  coord_flip() +
+  labs(
+    x = NULL,
+    y = "Number of Publications",
+    title = "Top 20 Most Productive Countries"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    panel.grid.minor = element_blank()
+  )
+```
+
+*(Results will be interpreted after execution.)*
+
+## Most Productive Journals
+
+```{r top-journals, fig.cap="Top 20 most productive journals."}
+# Extract source (journal) frequency
+source_df <- M %>%
+  group_by(SO) %>%
+  summarise(Articles = n(), .groups = "drop") %>%
+  arrange(desc(Articles)) %>%
+  head(20)
+
+ggplot(source_df, aes(x = reorder(SO, Articles), y = Articles)) +
+  geom_bar(stat = "identity", fill = "#F4A582", alpha = 0.9) +
+  geom_text(aes(label = Articles), hjust = -0.2, size = 3.2) +
+  coord_flip() +
+  labs(
+    x = NULL,
+    y = "Number of Publications",
+    title = "Top 20 Most Productive Journals"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    panel.grid.minor = element_blank()
+  )
+```
+
+*(Results will be interpreted after execution.)*
+
+## Highly Cited Papers
+
+```{r highly-cited}
+# Identify the 20 most cited papers
+most_cited <- M %>%
+  select(AU, TI, SO, PY, TC) %>%
+  arrange(desc(TC)) %>%
+  head(20)
+
+knitr::kable(
+  most_cited,
+  col.names = c("Authors", "Title", "Journal", "Year", "Total Citations"),
+  caption = "Top 20 most cited publications in the dataset."
+)
+```
+
+The most highly cited publications serve as foundational references within the field. These papers typically represent seminal reviews, landmark empirical studies, or methodological advances that have substantially shaped the direction of subsequent research.
+
+*(Results will be interpreted after execution.)*
+
+## Collaboration Networks
+
+### Country Collaboration Network
+
+```{r country-collaboration, fig.cap="Country collaboration network."}
+# Build country collaboration network
+netCollab <- biblioNetwork(M, analysis = "collaboration", network = "countries", sep = ";")
+
+# Plot the network
+networkPlot(
+  netCollab,
+  n = 40,
+  type = "fruchterman",
+  size = TRUE,
+  size.cex = TRUE,
+  labelsize = 0.8,
+  edgesize = 3,
+  edges.min = 2
+)
+```
+
+The country collaboration network illustrates the structure and intensity of international scientific cooperation in the field. Node size reflects the volume of publications from each country, while edge thickness represents the strength of collaborative ties. Prominent clusters indicate geographically or thematically aligned research communities.
+
+*(Results will be interpreted after execution.)*
+
+### Institutional Collaboration Network
+
+```{r institution-collaboration, fig.cap="Institutional collaboration network."}
+# Build institutional collaboration network
+netInst <- biblioNetwork(M, analysis = "collaboration", network = "universities", sep = ";")
+
+networkPlot(
+  netInst,
+  n = 40,
+  type = "fruchterman",
+  size = TRUE,
+  size.cex = TRUE,
+  labelsize = 0.6,
+  edgesize = 2,
+  edges.min = 3
+)
+```
+
+*(Results will be interpreted after execution.)*
+
+## Keyword Co-occurrence Mapping
+
+```{r keyword-cooccurrence, fig.cap="Keyword co-occurrence network based on Keywords Plus."}
+# Build keyword co-occurrence network
+NetKeywords <- biblioNetwork(M, analysis = "co-occurrences", network = "keywords", sep = ";")
+
+networkPlot(
+  NetKeywords,
+  normalize = "association",
+  n = 40,
+  type = "fruchterman",
+  size = TRUE,
+  size.cex = TRUE,
+  labelsize = 0.7,
+  edgesize = 3,
+  edges.min = 3
+)
+```
+
+The keyword co-occurrence network reveals the conceptual structure of the research field. Clusters of frequently co-occurring keywords indicate thematic areas. Of particular interest are connections among terms related to:
+
+- **Microplastic sources and environmental pathways**: water, wastewater, rivers, soil, air, food chain, ingestion, inhalation.
+- **Health endpoints**: toxicity, oxidative stress, inflammation, genotoxicity, carcinogenesis, endocrine disruption.
+
+*(Results will be interpreted after execution.)*
+
+```{r author-keyword-cooccurrence, fig.cap="Author keyword co-occurrence network."}
+# Author keywords network
+NetAuthKeywords <- biblioNetwork(M, analysis = "co-occurrences", network = "author_keywords", sep = ";")
+
+networkPlot(
+  NetAuthKeywords,
+  normalize = "association",
+  n = 40,
+  type = "fruchterman",
+  size = TRUE,
+  size.cex = TRUE,
+  labelsize = 0.7,
+  edgesize = 3,
+  edges.min = 3
+)
+```
+
+*(Results will be interpreted after execution.)*
+
+## Thematic Map
+
+```{r thematic-map, fig.cap="Thematic map of the research field based on Keywords Plus."}
+# Generate thematic map
+TM <- thematicMap(M, field = "ID", n = 250, minfreq = 10, stemming = FALSE, size = 0.5, repel = TRUE)
+plot(TM$map)
+```
+
+The thematic map positions keyword clusters along two dimensions: **centrality** (importance of a theme to the overall field) and **density** (internal coherence and development of a theme). This produces four quadrants:
+
+- **Motor themes** (high centrality, high density): well-developed and central to the field.
+- **Basic themes** (high centrality, low density): important but not yet well-developed.
+- **Niche themes** (low centrality, high density): well-developed but peripheral.
+- **Emerging or declining themes** (low centrality, low density): weakly developed and marginal.
+
+*(Results will be interpreted after execution.)*
+
+## Thematic Evolution
+
+```{r thematic-evolution, fig.cap="Thematic evolution across three time periods (2000–2010, 2011–2017, 2018–2025)."}
+# Define time slices for thematic evolution
+years <- c(2010, 2017)
+
+# Perform thematic evolution analysis
+TE <- thematicEvolution(M, field = "DE", years = years, n = 1000, minFreq = 5)
+
+plotThematicEvolution(TE$Nodes, TE$Edges)
+```
+
+The thematic evolution analysis traces how research themes have emerged, merged, split, or declined across three defined time periods:
+
+- **Period 1 (2000--2010)**: Early exploratory phase, predominantly focused on marine debris characterisation and environmental occurrence.
+- **Period 2 (2011--2017)**: Expansion of research to include freshwater, soil, and atmospheric pathways, alongside growing interest in biological effects.
+- **Period 3 (2018--2025)**: Maturation phase with increasing emphasis on human health endpoints, toxicological mechanisms, and risk assessment.
+
+*(Results will be interpreted after execution.)*
+
+## Co-citation Analysis
+
+```{r cocitation-network, fig.cap="Co-citation network of cited references."}
+# Build co-citation network using shortened reference labels to reduce matrix size
+NetCoCitation <- biblioNetwork(M, analysis = "co-citation", network = "references", sep = ";", short = TRUE)
+
+# Pre-reduce matrix to top 40 most co-cited references to prevent out-of-memory error
+# (the full matrix has ~300K references; networkPlot crashes trying to delete that many vertices)
+net_diag <- Matrix::diag(NetCoCitation)
+top_indices <- order(net_diag, decreasing = TRUE)[1:min(40, length(net_diag))]
+NetCoCitation <- NetCoCitation[top_indices, top_indices]
+
+networkPlot(
+  NetCoCitation,
+  n = 40,
+  type = "fruchterman",
+  size = TRUE,
+  size.cex = TRUE,
+  labelsize = 0.5,
+  edgesize = 3,
+  edges.min = 5
+)
+```
+
+Co-citation analysis identifies groups of references that are frequently cited together, thereby revealing the intellectual foundations and conceptual clusters of the field. Clusters may correspond to distinct research traditions, such as environmental monitoring, ecotoxicology, polymer chemistry, or human health risk assessment.
+
+*(Results will be interpreted after execution.)*
+
+## Trend Topic Analysis
+
+```{r trend-topics, fig.cap="Trend topics over time based on Keywords Plus."}
+# Identify trending topics
+TT <- fieldByYear(M, field = "ID", timespan = c(2000, 2025), min.freq = 10, n.items = 10, graph = TRUE)
+```
+
+The trend topic analysis identifies keywords that have gained or lost prominence over time, providing insight into the shifting research priorities of the scientific community. Keywords that appear with increasing frequency in recent years may signal emerging research frontiers.
+
+*(Results will be interpreted after execution.)*
+
+## Overlay Thematic Visualisation
+
+```{r overlay-visualisation, fig.cap="Conceptual structure map using multiple correspondence analysis (MCA)."}
+# Conceptual structure using MCA on Keywords Plus
+CS <- conceptualStructure(
+  M,
+  field = "ID",
+  method = "MCA",
+  minDegree = 10,
+  clust = "auto",
+  stemming = FALSE,
+  labelsize = 8,
+  documents = 20
+)
+```
+
+The conceptual structure map, derived via multiple correspondence analysis (MCA), provides an alternative visualisation of the thematic landscape. By reducing the high-dimensional keyword space to two principal dimensions, the map reveals clusters of semantically related keywords and their relative positions within the research field.
+
+*(Results will be interpreted after execution.)*
+
+## Assessment of Health-related Trends
+
+```{r health-trend-assessment, fig.cap="Temporal trend of publications mentioning specific health endpoints."}
+# Define health-related search terms
+health_terms <- c("oxidative stress", "inflammation", "genotoxic", "carcinogen",
+                  "cancer", "dna damage", "endocrine disruption", "human health",
+                  "cytotoxic", "apoptosis")
+
+# Search abstracts and keywords for health terms
+M$AB_lower <- tolower(M$AB)
+M$DE_lower <- tolower(M$DE)
+M$ID_lower <- tolower(M$ID)
+
+health_df <- lapply(health_terms, function(term) {
+  matches <- M %>%
+    filter(
+      str_detect(AB_lower, fixed(term)) |
+      str_detect(DE_lower, fixed(term)) |
+      str_detect(ID_lower, fixed(term))
+    ) %>%
+    group_by(PY) %>%
+    summarise(Articles = n(), .groups = "drop") %>%
+    mutate(Term = term)
+  return(matches)
+}) %>%
+  bind_rows() %>%
+  filter(!is.na(PY))
+
+ggplot(health_df, aes(x = PY, y = Articles, colour = Term)) +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 1.5) +
+  scale_x_continuous(breaks = seq(2000, 2025, by = 3)) +
+  labs(
+    x = "Publication Year",
+    y = "Number of Publications",
+    title = "Temporal Trends of Health-related Keywords (2000–2025)",
+    colour = "Health Endpoint"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    legend.position = "bottom",
+    legend.text = element_text(size = 9),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank()
+  ) +
+  guides(colour = guide_legend(nrow = 2))
+```
+
+```{r carcinogenic-chronic-trend, fig.cap="Proportion of publications addressing carcinogenic or chronic disease outcomes over time."}
+# Identify publications with carcinogenic/chronic terms
+chronic_terms <- c("carcinogen", "cancer", "chronic", "tumor", "tumour",
+                   "neoplasm", "mutagenic", "dna damage", "genotoxic")
+
+M$chronic_flag <- apply(M[, c("AB_lower", "DE_lower", "ID_lower")], 1, function(row) {
+  any(sapply(chronic_terms, function(term) any(str_detect(row, fixed(term)))))
+})
+
+chronic_trend <- M %>%
+  filter(!is.na(PY)) %>%
+  group_by(PY) %>%
+  summarise(
+    Total = n(),
+    Chronic = sum(chronic_flag, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(Proportion = Chronic / Total * 100)
+
+ggplot(chronic_trend, aes(x = PY, y = Proportion)) +
+  geom_bar(stat = "identity", fill = "#D7191C", alpha = 0.75, width = 0.7) +
+  geom_smooth(method = "loess", se = TRUE, colour = "#2C7BB6", linewidth = 1.2) +
+  scale_x_continuous(breaks = seq(min(chronic_trend$PY), max(chronic_trend$PY), by = 2)) +
+  labs(
+    x = "Publication Year",
+    y = "Proportion (%)",
+    title = "Proportion of Publications Addressing Carcinogenic or Chronic Outcomes",
+    subtitle = "Among all microplastics–health publications (2000–2025)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5, colour = "grey40"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank()
+  )
+```
+
+This analysis directly addresses the objective of assessing whether the scientific literature linking microplastics to chronic or carcinogenic outcomes is increasing over time. The temporal trends of specific health-related keywords, together with the proportion of publications addressing carcinogenic or chronic disease outcomes, provide quantitative evidence of the shifting focus of the research community.
+
+*(Results will be interpreted after execution.)*
+
+# Discussion
+
+## Evolution from Environmental Occurrence to Health Impact
+
+The bibliometric evidence is expected to reveal a clear temporal shift in the research landscape. Early publications (2000--2010) were predominantly concerned with the environmental occurrence, distribution, and characterisation of microplastics in marine settings. During the second phase (2011--2017), the field broadened to include freshwater, soil, and atmospheric compartments, alongside increasing attention to biological uptake and trophic transfer. The most recent period (2018--2025) is characterised by a pronounced shift toward human health-oriented research, including exposure assessment, toxicological mechanisms, and epidemiological considerations.
+
+*(Results will be interpreted after execution.)*
+
+## Increasing Attention to Oxidative Stress and Carcinogenicity
+
+The keyword co-occurrence and trend topic analyses are expected to demonstrate a growing prominence of terms related to oxidative stress, inflammation, genotoxicity, and carcinogenicity in recent years. This trend reflects the increasing recognition that microplastic exposure may contribute to cellular damage through reactive oxygen species generation, inflammatory cascades, and DNA damage pathways. The emergence of these themes underscores the need for systematic toxicological evaluation and regulatory consideration.
+
+*(Results will be interpreted after execution.)*
+
+## Gaps in Chronic Disease Linkage
+
+Despite growing interest in the health effects of microplastics, significant gaps are anticipated in the literature regarding the direct linkage between microplastic exposure and chronic disease outcomes in human populations. The majority of toxicological evidence is derived from in vitro and animal model studies, with a relative paucity of epidemiological investigations. This gap represents a critical frontier for future research and policy development.
+
+*(Results will be interpreted after execution.)*
+
+# Conclusion
+
+This bibliometric analysis provides a comprehensive, data-driven overview of the global research landscape on microplastic sources, environmental pathways, and health implications from 2000 to 2025. The findings illustrate the rapid expansion of this interdisciplinary field, the diversification of research themes, the strengthening of international collaboration networks, and the emerging focus on human health endpoints. The analysis highlights both the substantial progress achieved and the critical knowledge gaps that remain, particularly regarding the chronic and carcinogenic effects of microplastic exposure in human populations. These findings underscore the urgency of continued, rigorous research to inform evidence-based public health policy and environmental regulation.
+
+*(Detailed conclusions will be formulated after execution of the complete analysis.)*
+
+# Session Information
+
+```{r session-info}
+sessionInfo()
+```
